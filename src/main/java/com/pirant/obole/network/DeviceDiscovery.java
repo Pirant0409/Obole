@@ -1,5 +1,7 @@
 package com.pirant.obole.network;
 
+import com.pirant.obole.model.Device;
+
 import javax.jmdns.JmDNS;
 import javax.jmdns.ServiceEvent;
 import javax.jmdns.ServiceInfo;
@@ -7,7 +9,8 @@ import javax.jmdns.ServiceListener;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.*;
+import java.util.function.Consumer;
 
 public class DeviceDiscovery {
 
@@ -15,6 +18,8 @@ public class DeviceDiscovery {
     private static final String SERVICE_NAME = "OboleService";
 
     private JmDNS jmdns;
+
+    public List<Device> discoveredDevices = new ArrayList<>();
 
     public void startService(int port) throws IOException {
         InetAddress addr = InetAddress.getLocalHost();
@@ -28,7 +33,7 @@ public class DeviceDiscovery {
         System.out.println("Service registered: " + serviceInfo);
     }
 
-    public void discoverServices() throws IOException {
+    public void discoverServices(Consumer<List<Device>> onDeviceListChanged) throws IOException {
         InetAddress addr = InetAddress.getLocalHost();
         jmdns = JmDNS.create(addr);
 
@@ -46,8 +51,20 @@ public class DeviceDiscovery {
             @Override
             public void serviceResolved(ServiceEvent event) {
                 ServiceInfo info = event.getInfo();
-                String resolvedName = extractDeviceName(info.getTextBytes());
-                System.out.println("Device found: " + resolvedName + " at " + info.getHostAddresses()[0] + ":" + info.getPort());
+                String currentDeviceName = extractDeviceName(info.getTextBytes());
+                String currentAddress = info.getHostAddresses()[0];
+                int currentPort = info.getPort();
+                Device currentDevice = new Device(currentDeviceName,currentAddress,currentPort);
+                System.out.println("Device found: " + currentDevice);
+                if(discoveredDevices.isEmpty()) {
+                    discoveredDevices.add(currentDevice);
+                    onDeviceListChanged.accept(discoveredDevices);
+                }
+                else if (discoveredDevices.contains(currentDevice)) {
+                    discoveredDevices.remove(currentDevice);
+                    discoveredDevices.add(currentDevice);
+                    onDeviceListChanged.accept(discoveredDevices);
+                }
             }
         });
 
@@ -55,7 +72,7 @@ public class DeviceDiscovery {
     }
 
     public String extractDeviceName(byte[] textBytes) {
-        if (textBytes != null && textBytes.length > 0 && textBytes[0] == 4) {
+        if (textBytes != null && textBytes.length > 0) {
             byte[] deviceNameBytes = Arrays.copyOfRange(textBytes, 1, textBytes.length);
             return new String(deviceNameBytes, StandardCharsets.UTF_8);
         } else {
