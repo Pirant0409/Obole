@@ -1,6 +1,9 @@
 package com.pirant.obole.controller;
 
+import com.pirant.obole.crypto.KeyManager;
+import com.pirant.obole.crypto.TrustedDeviceStore;
 import com.pirant.obole.model.Device;
+import com.pirant.obole.model.TrustedDevice;
 import com.pirant.obole.network.DeviceDiscovery;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -13,6 +16,10 @@ import javafx.scene.layout.VBox;
 
 import javax.jmdns.ServiceInfo;
 import java.io.IOException;
+import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
+import java.security.PublicKey;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
@@ -71,13 +78,33 @@ public class HelloController {
 
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK){
-              connectToDevice(device);
+                try {
+                    connectToDevice(device);
+                } catch (NoSuchAlgorithmException e) {
+                    throw new RuntimeException(e);
+                }
             }
         });
         devicesContainer.getChildren().add(deviceButton);
     }
 
-    private void connectToDevice(Device device) {
-        System.out.println("Connected to device " + device.getName());
+    private void connectToDevice(Device device) throws NoSuchAlgorithmException {
+        try{
+            KeyManager keyManager = new KeyManager();
+
+            PublicKey publicKey = keyManager.getPublicKey();
+            String publicKeyBase64 = Base64.getEncoder().encodeToString(publicKey.getEncoded());
+
+            // TODO: Send your key to the device over the network here
+
+            String fakeDevicePublicKeyBase64 = "MIIBIjANBgkqhkiG9";
+
+            TrustedDeviceStore trustedDeviceStore = new TrustedDeviceStore();
+            trustedDeviceStore.addTrustedDevice(device, publicKeyBase64);
+
+        } catch(Exception e){
+            e.printStackTrace();
+        }
+
     }
 }

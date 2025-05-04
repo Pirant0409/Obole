@@ -4,14 +4,16 @@ import java.util.Objects;
 
 public class Device {
     private String name;
-    private final String address;
-    private final int port;
+    private  String address;
+    private  int port;
 
     public Device(String name, String address, int port) {
         this.name = name;
         this.address = address;
         this.port = port;
     }
+    //no-argument constructor for JSON object
+    public Device(){}
 
     @Override
     public String toString() {
